@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the eval + improve loop until all pass or max iterations reached.
+"""Run the Claude-oriented trigger eval + improve loop until all pass or max iterations reached.
 
 Combines run_eval.py and improve_description.py in a loop, tracking history
 and returning the best description found. Supports train/test split to prevent
@@ -33,9 +33,15 @@ def split_eval_set(eval_set: list[dict], holdout: float, seed: int = 42) -> tupl
     random.shuffle(trigger)
     random.shuffle(no_trigger)
 
-    # Calculate split points
-    n_trigger_test = max(1, int(len(trigger) * holdout))
-    n_no_trigger_test = max(1, int(len(no_trigger) * holdout))
+    def test_count(items: list[dict]) -> int:
+        if len(items) < 2:
+            return 0
+        proposed = int(len(items) * holdout)
+        return min(max(proposed, 1), len(items) - 1)
+
+    # Calculate split points while keeping train data when possible.
+    n_trigger_test = test_count(trigger)
+    n_no_trigger_test = test_count(no_trigger)
 
     # Split
     test_set = trigger[:n_trigger_test] + no_trigger[:n_no_trigger_test]
@@ -242,7 +248,7 @@ def run_loop(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run eval + improve loop")
+    parser = argparse.ArgumentParser(description="Run the Claude-specific trigger eval + improve loop")
     parser.add_argument("--eval-set", required=True, help="Path to eval set JSON file")
     parser.add_argument("--skill-path", required=True, help="Path to skill directory")
     parser.add_argument("--description", default=None, help="Override starting description")
